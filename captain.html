@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RESPAWN | نظام الكابتن</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { darkBg: '#0B0B0F', primaryPurple: '#6D28D9', neonViolet: '#A855F7', accentCyan: '#22D3EE' },
+                    fontFamily: { cairo: ['Cairo', 'sans-serif'], orbitron: ['Orbitron', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #0B0B0F; color: #fff; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .category-btn.active { background: linear-gradient(90deg, #6D28D9, #A855F7); color: white; box-shadow: 0 0 15px rgba(168, 85, 247, 0.5); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .table-card { transition: all 0.3s ease; }
+        .digital-clock { font-family: 'Orbitron', sans-serif; text-shadow: 0 0 15px #22D3EE; }
+    </style>
+</head>
+<body class="min-h-screen pb-24">
+
+    <header class="p-6 flex justify-between items-center glass sticky top-0 z-50">
+        <h1 class="text-2xl font-black font-orbitron">RESPAWN <span class="text-neonViolet">CAPTAIN</span></h1>
+        <div id="sync-status" class="text-[10px] font-orbitron bg-accentCyan/20 text-accentCyan px-3 py-1 rounded-full">متصل بالسحابة</div>
+    </header>
+
+    <div id="view-tables" class="p-6 animate__animated animate__fadeIn">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-black">الطاولات <span class="text-neonViolet">المفتوحة</span></h2>
+            <button onclick="openNewTable()" class="px-6 py-3 rounded-2xl bg-neonViolet font-bold shadow-lg shadow-purple-500/30 text-sm">+ فتح طاولة</button>
+        </div>
+        <div id="tables-grid" class="grid grid-cols-2 gap-4"></div>
+    </div>
+
+    <div id="view-order" class="hidden p-6 animate__animated animate__fadeIn">
+        <div class="flex items-center gap-4 mb-8">
+            <button onclick="switchView('tables')" class="p-3 glass rounded-2xl">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <h2 id="current-table-name" class="text-2xl font-black">اسم الطاولة</h2>
+        </div>
+        <div id="cat-nav" class="flex gap-3 overflow-x-auto no-scrollbar mb-8 p-2"></div>
+        <div id="products-grid" class="grid grid-cols-1 gap-4 mb-24"></div>
+    </div>
+
+    <div id="bottom-bar" class="fixed bottom-0 left-0 right-0 p-6 glass border-t border-white/10 hidden z-50">
+        <div class="flex justify-between items-center max-w-md mx-auto">
+            <div>
+                <p class="text-xs text-gray-400">إجمالي الحساب</p>
+                <h4 id="footer-total" class="text-2xl font-black font-orbitron text-accentCyan">0 IQD</h4>
+            </div>
+            <button onclick="viewTableDetails()" class="px-8 py-3 rounded-2xl bg-neonViolet font-bold shadow-lg shadow-purple-500/30 transition-all active:scale-95">تفاصيل 👁️</button>
+        </div>
+    </div>
+
+    <div id="detail-modal" class="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[100] hidden p-6">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-3xl font-black">ملخص <span class="text-neonViolet">الطلبات</span></h2>
+            <button onclick="closeDetails()" class="text-3xl text-gray-400 hover:text-white">✕</button>
+        </div>
+        <div id="detail-list" class="space-y-4 mb-8 max-h-[50vh] overflow-y-auto no-scrollbar"></div>
+        
+        <!-- العداد الذكي (تنازلي / تصاعدي) -->
+        <div id="timer-container" class="glass p-6 rounded-3xl text-center mb-8 hidden animate__animated animate__pulse animate__infinite">
+            <p id="timer-label" class="text-sm text-gray-400 mb-2 font-bold">الوقت المتبقي</p>
+            <h3 id="clock" class="text-5xl font-black font-orbitron text-accentCyan digital-clock">00:00:00</h3>
+        </div>
+
+        <div class="flex justify-between items-center p-6 glass rounded-3xl border-t-4 border-neonViolet">
+            <span class="font-bold text-xl">المجموع النهائي:</span>
+            <span id="detail-total" class="text-3xl font-black text-accentCyan font-orbitron">0 IQD</span>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAFQx3BndP3piYkONM0KSBcb5vo8xx3a5Q",
+            authDomain: "respawn-7654a.firebaseapp.com",
+            projectId: "respawn-7654a",
+            storageBucket: "respawn-7654a.firebasestorage.app",
+            messagingSenderId: "503079760523",
+            appId: "1:503079760523:web:002bb6364abd211f5a9a8e"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let selectedTableId = null;
+        let allProducts = [];
+        let allCategories = [];
+        let timerInterval;
+
+        window.switchView = (view) => {
+            document.getElementById('view-tables').classList.toggle('hidden', view !== 'tables');
+            document.getElementById('view-order').classList.toggle('hidden', view !== 'order');
+            document.getElementById('bottom-bar').classList.toggle('hidden', view === 'tables');
+        };
+
+        onSnapshot(query(collection(db, "tables"), where("status", "==", "open")), (snap) => {
+            const grid = document.getElementById('tables-grid');
+            grid.innerHTML = '';
+            snap.forEach(docSnap => {
+                const table = docSnap.data();
+                grid.innerHTML += `
+                    <div onclick="openTable('${docSnap.id}', '${table.name}')" class="glass p-6 rounded-3xl text-center cursor-pointer table-card border-2 border-neonViolet">
+                        <h3 class="text-lg font-bold mb-2">${table.name}</h3>
+                        <span class="text-[10px] px-2 py-1 rounded-lg bg-neonViolet text-white">نشط</span>
+                    </div>
+                `;
+            });
+        });
+
+        window.openNewTable = async () => {
+            const name = prompt("أدخل اسم الطاولة:");
+            if(!name) return;
+            await addDoc(collection(db, "tables"), { name, status: 'open', currentTotal: 0, items: [], startTime: null, timerType: null, duration: 0 });
+        };
+
+        window.openTable = async (id, name) => {
+            selectedTableId = id;
+            document.getElementById('current-table-name').innerText = name;
+            const catSnap = await getDocs(collection(db, "categories"));
+            const prodSnap = await getDocs(collection(db, "products"));
+            allCategories = catSnap.docs.map(d => ({id: d.id, ...d.data()}));
+            allProducts = prodSnap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderCategories();
+            if(allCategories.length > 0) renderProducts(allCategories[0].id);
+            updateFooterTotal();
+            switchView('order');
+        };
+
+        function renderCategories() {
+            const nav = document.getElementById('cat-nav');
+            nav.innerHTML = '';
+            allCategories.forEach((cat, i) => {
+                const btn = document.createElement('button');
+                btn.className = `category-btn whitespace-nowrap px-6 py-2 rounded-full text-sm font-bold transition-all ${i===0?'active':'glass text-gray-400'}`;
+                btn.innerText = cat.name;
+                btn.onclick = (e) => {
+                    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    renderProducts(cat.id);
+                };
+                nav.appendChild(btn);
+            });
+        }
+
+        function renderProducts(catId) {
+            const grid = document.getElementById('products-grid');
+            grid.innerHTML = '';
+            const filtered = allProducts.filter(p => p.categoryId === catId);
+            filtered.forEach(p => {
+                grid.innerHTML += `
+                    <div onclick="addItem('${p.id}')" class="glass p-5 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-neonViolet/20 transition-all">
+                        <div><h4 class="font-bold">${p.name} ${p.isTimed ? '🕒' : ''}</h4><p class="text-accentCyan font-orbitron text-sm">${p.price} IQD</p></div>
+                        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-black">+</div>
+                    </div>
+                `;
+            });
+        }
+
+        window.addItem = async (prodId) => {
+            const prod = allProducts.find(p => p.id === prodId);
+            const tableRef = doc(db, "tables", selectedTableId);
+            const snap = await getDocs(query(collection(db, "tables"), where("__name__", "==", selectedTableId)));
+            const tableData = snap.docs[0].data();
+            const items = tableData.items || [];
+            items.push({ name: prod.name, price: prod.price, qty: 1 });
+            
+            const updates = { items, currentTotal: (tableData.currentTotal || 0) + prod.price };
+            
+            // --- منطق تفعيل العداد الذكي ---
+            if(prod.isTimed) {
+                updates.startTime = Date.now();
+                updates.timerType = prod.timeType; // 'countdown' or 'countup'
+                updates.duration = prod.duration || 0;
+            }
+            
+            await updateDoc(tableRef, updates);
+            updateFooterTotal();
+        };
+
+        async function updateFooterTotal() {
+            const snap = await getDocs(query(collection(db, "tables"), where("__name__", "==", selectedTableId)));
+            const table = snap.docs[0].data();
+            document.getElementById('footer-total').innerText = `${table.currentTotal || 0} IQD`;
+        }
+
+        window.viewTableDetails = async () => {
+            const snap = await getDocs(query(collection(db, "tables"), where("__name__", "==", selectedTableId)));
+            const table = snap.docs[0].data();
+            const list = document.getElementById('detail-list');
+            list.innerHTML = '';
+            (table.items || []).forEach((item, idx) => {
+                list.innerHTML += `
+                    <div class="flex justify-between items-center p-4 glass rounded-2xl">
+                        <span class="font-bold">${item.name}</span>
+                        <div class="flex items-center gap-4">
+                            <span class="font-orbitron">${item.price} IQD</span>
+                            <button onclick="updateQty(${idx}, -1)" class="w-8 h-8 rounded-lg bg-white/10">-</button>
+                            <span class="font-bold">${item.qty || 1}</span>
+                            <button onclick="updateQty(${idx}, 1)" class="w-8 h-8 rounded-lg bg-white/10">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('detail-total').innerText = `${table.currentTotal || 0} IQD`;
+            
+            if(table.startTime) {
+                document.getElementById('timer-container').classList.remove('hidden');
+                startTimer(table.startTime, table.timerType, table.duration);
+            } else {
+                document.getElementById('timer-container').classList.add('hidden');
+            }
+            document.getElementById('detail-modal').classList.remove('hidden');
+        };
+
+        function startTimer(startTime, type, durationMins) {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                const clockEl = document.getElementById('clock');
+                const labelEl = document.getElementById('timer-label');
+                if(!clockEl) return;
+
+                if(type === 'countdown') {
+                    labelEl.innerText = "الوقت المتبقي";
+                    const endTime = startTime + (durationMins * 60 * 1000);
+                    let diff = endTime - now;
+                    if(diff <= 0) {
+                        clockEl.innerText = "00:00:00";
+                        clockEl.classList.add('text-red-500');
+                        clearInterval(timerInterval);
+                        return;
+                    }
+                    const h = Math.floor(diff / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    const s = Math.floor((diff % 60000) / 1000);
+                    clockEl.innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                } else {
+                    labelEl.innerText = "الوقت المستغرق";
+                    const diff = now - startTime;
+                    const h = Math.floor(diff / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    const s = Math.floor((diff % 60000) / 1000);
+                    clockEl.innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                }
+            }, 1000);
+        }
+
+        window.closeDetails = () => {
+            document.getElementById('detail-modal').classList.add('hidden');
+            clearInterval(timerInterval);
+        };
+
+        window.updateQty = async (idx, delta) => {
+            const tableRef = doc(db, "tables", selectedTableId);
+            const snap = await getDocs(query(collection(db, "tables"), where("__name__", "==", selectedTableId)));
+            const tableData = snap.docs[0].data();
+            const items = tableData.items;
+            const item = items[idx];
+            const priceChange = item.price * delta;
+            if(item.qty + delta <= 0) { items.splice(idx, 1); } else { items[idx].qty = (items[idx].qty || 1) + delta; }
+            await updateDoc(tableRef, { items, currentTotal: tableData.currentTotal + priceChange });
+            viewTableDetails();
+        };
+    </script>
+</body>
+</html>
