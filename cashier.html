@@ -3,18 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RESPAWN | النظام الاحترافي</title>
+    <title>RESPAWN | Cashier</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: { darkBg: '#0B0B0F', primaryPurple: '#6D28D9', neonViolet: '#A855F7', accentCyan: '#22D3EE' },
-                    fontFamily: { cairo: ['Cairo', 'sans-serif'], orbitron: ['Orbitron', 'sans-serif'] }
-                }
-            }
+            theme: { extend: { colors: { darkBg: '#0B0B0F', primaryPurple: '#6D28D9', neonViolet: '#A855F7', accentCyan: '#22D3EE' }, fontFamily: { cairo: ['Cairo', 'sans-serif'], orbitron: ['Orbitron', 'sans-serif'] } } }
         }
     </script>
     <style>
@@ -24,10 +19,24 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .custom-gradient { background: linear-gradient(135deg, #6D28D9 0%, #A855F7 100%); }
         .menu-drawer { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .digital-clock { font-family: 'Orbitron', sans-serif; text-shadow: 0 0 10px #22D3EE; }
+        @media print {
+            body * { visibility: hidden; }
+            #print-receipt, #print-receipt * { visibility: visible; color: black !important; font-family: 'Cairo', sans-serif; }
+            #print-receipt { position: absolute; left: 0; top: 0; width: 80mm; padding: 10px; background: white; }
+        }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden">
+
+    <!-- شاشة تسجيل الدخول (Cashier Login) -->
+    <div id="login-screen" class="fixed inset-0 bg-darkBg z-[200] flex flex-col items-center justify-center animate__animated animate__fadeIn">
+        <h1 class="text-5xl font-black font-orbitron mb-8">RESPAWN <span class="text-neonViolet">CASHIER</span></h1>
+        <div class="glass p-10 rounded-[3rem] text-center w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-6">تسجيل الدخول</h2>
+            <input type="password" id="passcode" placeholder="أدخل الرمز السري..." class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-6 text-center text-2xl outline-none focus:border-neonViolet tracking-[0.5em]">
+            <button onclick="checkLogin()" class="w-full px-10 py-4 rounded-2xl custom-gradient font-bold text-xl hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-all">دخول</button>
+        </div>
+    </div>
 
     <!-- Sidebar Drawer -->
     <div id="drawer" class="fixed top-0 right-0 w-80 h-full glass z-[100] menu-drawer translate-x-full border-l border-white/10 p-6 flex flex-col">
@@ -39,20 +48,19 @@
             <button onclick="switchView('dashboard')" class="sidebar-link flex items-center gap-4 p-4 rounded-2xl transition-all font-bold text-gray-400 hover:text-white">لوحة التحكم</button>
             <button onclick="switchView('tables')" class="sidebar-link flex items-center gap-4 p-4 rounded-2xl transition-all font-bold text-gray-400 hover:text-white">إدارة الطاولات</button>
             <button onclick="switchView('menu')" class="sidebar-link flex items-center gap-4 p-4 rounded-2xl transition-all font-bold text-gray-400 hover:text-white">إدارة المنيو</button>
-            <button onclick="switchView('invoices')" class="sidebar-link flex items-center gap-4 p-4 rounded-2xl transition-all font-bold text-gray-400 hover:text-white">الفواتير</button>
+            <button onclick="switchView('invoices')" class="sidebar-link flex items-center gap-4 p-4 rounded-2xl transition-all font-bold text-gray-400 hover:text-white">الفواتير والتقارير</button>
             <div class="h-px bg-white/10 my-4"></div>
             <button onclick="resetSystem()" class="p-4 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all font-bold">تصفير النظام ⚠️</button>
         </nav>
     </div>
 
-    <main class="flex-1 h-full overflow-y-auto no-scrollbar relative">
-        <!-- Top Header -->
+    <main id="main-content" class="flex-1 h-full overflow-y-auto no-scrollbar relative hidden">
         <div class="flex justify-between items-center p-8 animate__animated animate__fadeInDown">
             <button onclick="toggleDrawer()" class="p-4 glass rounded-2xl text-white hover:bg-neonViolet transition-all">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <h1 class="text-4xl font-black font-orbitron">RESPAWN <span class="text-neonViolet">CASHIER</span></h1>
-            <div class="w-12 h-12 rounded-full glass flex items-center justify-center text-xl">👤</div>
+            <div class="w-12 h-12 rounded-full glass flex items-center justify-center text-xl cursor-pointer" onclick="location.reload()">🔄</div>
         </div>
 
         <!-- VIEW: DASHBOARD -->
@@ -64,7 +72,7 @@
                 </div>
                 <div class="glass p-8 rounded-[3rem] flex items-center gap-6 border-b-4 border-accentCyan">
                     <div class="text-4xl">📅</div>
-                    <div><p class="text-gray-400 text-xs font-bold uppercase">إيراد الشهر</p><h3 id="month-rev" class="text-3xl font-black font-orbitron">0 IQD</h3></div>
+                    <div><p class="text-gray-400 text-xs font-bold uppercase">الفواتير</p><h3 id="invoice-count" class="text-3xl font-black font-orbitron">0</h3></div>
                 </div>
                 <div class="glass p-8 rounded-[3rem] flex items-center gap-6 border-b-4 border-red-500">
                     <div class="text-4xl">🔥</div>
@@ -73,7 +81,7 @@
             </div>
         </div>
 
-        <!-- VIEW: TABLES GRID -->
+        <!-- VIEW: TABLES -->
         <div id="view-tables" class="view hidden p-8 animate__animated animate__fadeIn">
             <div class="flex justify-between items-center mb-8">
                 <div class="flex gap-4">
@@ -82,10 +90,10 @@
                 </div>
                 <button onclick="openAddTableModal()" class="px-6 py-3 rounded-2xl custom-gradient font-bold shadow-lg">إضافة طاولة +</button>
             </div>
-            <div id="tables-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+            <div id="tables-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20"></div>
         </div>
 
-        <!-- VIEW: MENU MGMT -->
+        <!-- VIEW: MENU -->
         <div id="view-menu" class="view hidden p-8 animate__animated animate__fadeIn">
             <div class="flex justify-between items-center mb-8">
                 <h2 class="text-3xl font-black">إدارة <span class="text-neonViolet">المنيو</span></h2>
@@ -103,14 +111,14 @@
             <div class="glass rounded-[3rem] overflow-hidden">
                 <table class="w-full text-right">
                     <thead class="bg-white/5 text-gray-400 text-xs font-bold">
-                        <tr><th class="p-6">رقم الفاتورة</th><th class="p-6">الطاولة</th><th class="p-6">المجموع</th><th class="p-6">التاريخ</th><th class="p-6">إجراء</th></tr>
+                        <tr><th class="p-6">رقم الفاتورة</th><th class="p-6">الطاولة</th><th class="p-6">المجموع</th><th class="p-6">التاريخ</th></tr>
                     </thead>
                     <tbody id="invoices-list" class="divide-y divide-white/5"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- VIEW: TABLE DETAIL PAGE -->
+        <!-- VIEW: TABLE DETAIL -->
         <div id="view-table-detail" class="view hidden p-8 animate__animated animate__fadeIn">
             <div class="flex justify-between items-center mb-8">
                 <button onclick="switchView('tables')" class="p-4 glass rounded-2xl hover:bg-neonViolet transition-all">
@@ -121,30 +129,26 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Left: Product Management -->
                 <div class="lg:col-span-2 space-y-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-2xl font-bold">الطلبات المفتوحة</h3>
                         <button onclick="openProductPicker()" class="px-6 py-3 rounded-2xl custom-gradient font-bold">+ إضافة منتج</button>
                     </div>
-                    <div id="detail-items-grid" class="space-y-4 max-h-[65vh] overflow-y-auto no-scrollbar pr-2">
-                        <!-- Dynamic Items -->
-                    </div>
+                    <div id="detail-items-grid" class="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar pr-2 pb-10"></div>
                 </div>
 
-                <!-- Right: Summary & Actions -->
                 <div class="space-y-6">
                     <div class="glass p-8 rounded-[3rem] sticky top-8">
                         <h3 class="text-xl font-bold mb-6 text-center">ملخص الحساب</h3>
                         <div class="space-y-4 mb-8">
                             <div class="flex justify-between text-gray-400"><span>المجموع:</span><span id="sum-total" class="font-orbitron">0 IQD</span></div>
-                            <div class="flex justify-between text-red-400"><span>مدفوع مبكراً:</span><span id="sum-paid" class="font-orbitron">0 IQD</span></div>
+                            <div class="flex justify-between text-red-400"><span>مدفوع جزئي:</span><span id="sum-paid" class="font-orbitron">0 IQD</span></div>
                             <div class="h-px bg-white/10 my-2"></div>
                             <div class="flex justify-between text-accentCyan text-3xl font-black"><span>المتبقي:</span><span id="sum-final" class="font-orbitron">0 IQD</span></div>
                         </div>
                         <div class="flex flex-col gap-4">
                             <button onclick="openTransferModal()" class="p-4 rounded-2xl glass font-bold hover:bg-white/10 transition-all">نقل الحساب ⇄</button>
-                            <button onclick="confirmClose()" class="p-4 rounded-2xl bg-neonViolet font-bold shadow-lg shadow-purple-500/30">إغلاق ودفع ✅</button>
+                            <button onclick="confirmClose()" class="p-4 rounded-2xl bg-neonViolet font-bold shadow-lg shadow-purple-500/30 text-lg">إغلاق ودفع وطباعة ✅</button>
                             <button onclick="deleteTableConfirm()" class="p-4 rounded-2xl bg-red-500/20 text-red-500 font-bold">مسح الطاولة 🗑️</button>
                         </div>
                     </div>
@@ -153,9 +157,8 @@
         </div>
     </main>
 
-    <!-- Global Modal -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
-        <div id="modal-content" class="glass w-full max-w-2xl p-10 rounded-[3rem] animate__animated animate__zoomIn relative">
+    <div id="modal-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] hidden flex items-center justify-center p-4">
+        <div id="modal-content" class="glass w-full max-w-2xl p-10 rounded-[3rem] animate__animated animate__zoomIn relative max-h-[90vh] overflow-y-auto no-scrollbar">
             <button onclick="closeModal()" class="absolute top-6 left-6 text-gray-400 hover:text-white text-2xl">✕</button>
             <div id="modal-body"></div>
         </div>
@@ -165,254 +168,305 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, onSnapshot, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAFQx3BndP3piYkONM0KSBcb5vo8xx3a5Q",
-            authDomain: "respawn-7654a.firebaseapp.com",
-            projectId: "respawn-7654a",
-            storageBucket: "respawn-7654a.firebasestorage.app",
-            messagingSenderId: "503079760523",
-            appId: "1:503079760523:web:002bb6364abd211f5a9a8e"
-        };
+        const firebaseConfig = { apiKey: "AIzaSyAFQx3BndP3piYkONM0KSBcb5vo8xx3a5Q", authDomain: "respawn-7654a.firebaseapp.com", projectId: "respawn-7654a" };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let allProducts = [];
-        let allCategories = [];
-        let currentTableId = null;
-        let allTables = [];
+        let allProducts = [], allCategories = [], allTables = [], currentTableId = null, timerInterval = null;
 
-        // Attach to window for HTML access
+        // --- AUTH ---
+        window.checkLogin = () => {
+            const pass = document.getElementById('passcode').value;
+            if(pass === '12345@@00') {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                window.switchView('dashboard');
+                loadMenu();
+            } else {
+                alert('الرمز السري غير صحيح!');
+            }
+        };
+        // Add Enter key support
+        document.getElementById("passcode").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") window.checkLogin();
+        });
+
+        // --- UI & NAV ---
         window.toggleDrawer = () => document.getElementById('drawer').classList.toggle('translate-x-full');
         window.switchView = (view) => {
             document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
             document.getElementById(`view-${view}`).classList.remove('hidden');
-            if(view !== 'table-detail') toggleDrawer();
+            if(view !== 'table-detail' && window.innerWidth < 768) document.getElementById('drawer').classList.add('translate-x-full');
+        };
+        window.closeModal = () => document.getElementById('modal-overlay').classList.add('hidden');
+
+        // --- CORE LOGIC & TIME ENGINE ---
+        window.calculateItemCost = (item) => {
+            if (item.type === 'normal') return (item.price * (item.qty || 1));
+            else if (item.type === 'open') {
+                const elapsedMs = (item.isRunning ? Date.now() : (item.endTime || Date.now())) - item.startTime;
+                return (elapsedMs / 3600000) * item.pricePerHour;
+            } else return item.price;
         };
 
-        // --- Tables Management ---
+        window.calculateTableTotal = (table) => {
+            let total = 0;
+            if(table.items) table.items.forEach(i => total += calculateItemCost(i));
+            return total;
+        };
+
+        // --- TABLES SYNC ---
         onSnapshot(query(collection(db, "tables"), where("status", "==", "open")), (snap) => {
-            allTables = snap.docs.map(d => ({id: d.id, ...d.// data()})); // fix later
             allTables = snap.docs.map(d => ({id: d.id, ...d.data()}));
-            renderTables(allTables);
             document.getElementById('active-tables-count').innerText = snap.size;
+            renderTablesGrid();
+            if(currentTableId && !document.getElementById('view-table-detail').classList.contains('hidden')) {
+                const currentTableData = allTables.find(t => t.id === currentTableId);
+                if(currentTableData) window.renderTableItems(currentTableData);
+            }
         });
 
-        function renderTables(tables) {
+        window.renderTablesGrid = () => {
+            const term = document.getElementById('table-search')?.value.toLowerCase() || '';
             const grid = document.getElementById('tables-grid');
             grid.innerHTML = '';
-            tables.forEach(table => {
+            allTables.filter(t => t.name.toLowerCase().includes(term)).forEach(table => {
+                const liveTotal = Math.round(calculateTableTotal(table));
                 grid.innerHTML += `
                     <div class="table-card glass p-6 rounded-3xl border-r-4 border-neonViolet cursor-pointer animate__animated animate__fadeIn" onclick="openTableDetail('${table.id}')">
                         <div class="flex justify-between items-start mb-4">
                             <h4 class="text-xl font-black font-orbitron">${table.name}</h4>
-                            <span class="text-[10px] px-2 py-1 rounded-lg bg-neonViolet text-white font-bold">مشغول</span>
+                            <span class="text-[10px] px-2 py-1 rounded-lg bg-neonViolet text-white font-bold">نشط</span>
                         </div>
                         <div class="flex justify-between items-end">
-                            <div class="text-xs text-gray-400 font-bold">${table.items ? table.items.length : 0} أصناف</div>
-                            <div class="text-2xl font-black text-accentCyan font-orbitron">${table.currentTotal || 0} IQD</div>
+                            <div class="text-xs text-gray-400 font-bold">${table.items ? table.items.length : 0} طلبات</div>
+                            <div class="text-2xl font-black text-accentCyan font-orbitron">${liveTotal.toLocaleString()} IQD</div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
-        }
-
-        window.searchTables = () => {
-            const term = document.getElementById('table-search').value.toLowerCase();
-            const filtered = allTables.filter(t => t.name.toLowerCase().includes(term));
-            renderTables(filtered);
         };
+        window.searchTables = () => renderTablesGrid();
 
-        window.openTableDetail = async (id) => {
+        // --- TABLE DETAILS ---
+        window.openTableDetail = (id) => {
             currentTableId = id;
-            const snap = await getDocs(query(collection(db, "tables"), where("__name__", "==", id)));
-            const table = snap.docs[0].data();
+            const table = allTables.find(t => t.id === id);
             document.getElementById('detail-table-name').innerText = table.name;
-            switchView('table-detail');
-            renderTableItems(table);
+            window.switchView('table-detail');
+            window.renderTableItems(table);
         };
 
-        async function renderTableItems(table) {
+        window.renderTableItems = (table) => {
             const grid = document.getElementById('detail-items-grid');
             grid.innerHTML = '';
-            let total = 0;
             let paidTotal = 0;
-
             if(!table.items) return;
 
             table.items.forEach((item, idx) => {
-                const itemSum = item.price * (item.qty || 1);
-                total += itemSum;
                 paidTotal += (item.paidAmount || 0);
+                let controlsHtml = '', displayHtml = '';
+                
+                if(item.type === 'normal') {
+                    displayHtml = `<div id="cost-${idx}" class="text-xl font-black text-accentCyan font-orbitron">${(item.price * item.qty).toLocaleString()} IQD</div>`;
+                    controlsHtml = `<div class="flex items-center gap-2 bg-black/40 p-2 rounded-2xl">
+                            <button onclick="updateItemQty(${idx}, 1)" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-neonViolet">+</button>
+                            <span class="font-bold w-6 text-center">${item.qty}</span>
+                            <button onclick="updateItemQty(${idx}, -1)" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-neonViolet">-</button>
+                        </div>`;
+                } else if(item.type === 'open' || item.type === 'fixed') {
+                    displayHtml = `<div id="cost-${idx}" class="text-xl font-black text-accentCyan font-orbitron">${item.type==='fixed'?item.price:''}</div>
+                                   <div id="time-${idx}" class="text-xs text-neonViolet font-bold font-orbitron">00:00:00</div>`;
+                    controlsHtml = item.isRunning 
+                        ? `<button onclick="toggleTimer(${idx})" class="px-4 py-2 bg-red-500/20 text-red-500 rounded-xl font-bold">إيقاف ⏸</button>`
+                        : `<button onclick="toggleTimer(${idx})" class="px-4 py-2 bg-green-500/20 text-green-500 rounded-xl font-bold">استئناف ▶</button>`;
+                }
 
-                grid.innerHTML += `
-                    <div class="glass p-5 rounded-3xl flex justify-between items-center animate__animated animate__fadeInUp">
-                        <div class="flex-1">
+                grid.innerHTML += `<div class="glass p-5 rounded-3xl flex justify-between items-center">
+                        <div>
                             <h4 class="font-bold text-lg">${item.name}</h4>
-                            <p class="text-xs text-gray-400">${item.price} IQD / للوحدة</p>
+                            <p class="text-xs text-gray-400">${item.type === 'open' ? 'سعر الساعة' : 'للوحدة'}: ${item.price || item.pricePerHour} IQD</p>
+                            ${item.type === 'normal' ? `<button onclick="handlePartialPayment(${idx})" class="text-[10px] text-neonViolet hover:underline mt-1 block">دفع جزئي</button>` : ''}
                         </div>
-                        <div class="flex items-center gap-6">
-                            <div class="flex items-center gap-3 bg-black/40 p-2 rounded-2xl">
-                                <button onclick="updateItemQty(${idx}, 1)" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-neonViolet">+</button>
-                                <span class="font-bold w-6 text-center">${item.qty || 1}</span>
-                                <button onclick="updateItemQty(${idx}, -1)" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-neonViolet">-</button>
-                            </div>
-                            <div class="text-right min-w-[120px]">
-                                <div class="text-xl font-black text-accentCyan font-orbitron">${itemSum.toLocaleString()} IQD</div>
-                                <button onclick="handlePartialPayment(${idx})" class="text-[10px] text-neonViolet hover:underline font-bold">دفع مبكر</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                        <div class="flex items-center gap-6">${controlsHtml}<div class="text-right min-w-[120px]">${displayHtml}</div></div>
+                    </div>`;
             });
-
-            document.getElementById('sum-total').innerText = `${total.toLocaleString()} IQD`;
             document.getElementById('sum-paid').innerText = `${paidTotal.toLocaleString()} IQD`;
-            document.getElementById('sum-final').innerText = `${(total - paidTotal).toLocaleString()} IQD`;
+            updateLiveTimeAndCost();
+        };
+
+        // --- TIMER LOOP ---
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(updateLiveTimeAndCost, 1000);
+
+        function updateLiveTimeAndCost() {
+            if(!currentTableId || document.getElementById('view-table-detail').classList.contains('hidden')) return;
+            const table = allTables.find(t => t.id === currentTableId);
+            if(!table || !table.items) return;
+            let liveTotal = 0, paidTotal = 0;
+
+            table.items.forEach((item, idx) => {
+                paidTotal += (item.paidAmount || 0);
+                const cost = calculateItemCost(item);
+                liveTotal += cost;
+                const timeEl = document.getElementById(`time-${idx}`), costEl = document.getElementById(`cost-${idx}`);
+
+                if(item.type === 'open') {
+                    const elapsedMs = (item.isRunning ? Date.now() : item.endTime) - item.startTime;
+                    const hours = Math.floor(elapsedMs / 3600000).toString().padStart(2, '0');
+                    const mins = Math.floor((elapsedMs % 3600000) / 60000).toString().padStart(2, '0');
+                    const secs = Math.floor((elapsedMs % 60000) / 1000).toString().padStart(2, '0');
+                    if(timeEl) timeEl.innerText = `${hours}:${mins}:${secs}`;
+                    if(costEl) costEl.innerText = `${Math.round(cost).toLocaleString()} IQD`;
+                } else if(item.type === 'fixed') {
+                    const elapsedMs = (item.isRunning ? Date.now() : item.endTime) - item.startTime;
+                    const remainingMs = Math.max(0, (item.duration * 60000) - elapsedMs);
+                    const mins = Math.floor(remainingMs / 60000).toString().padStart(2, '0');
+                    const secs = Math.floor((remainingMs % 60000) / 1000).toString().padStart(2, '0');
+                    if(timeEl) timeEl.innerText = remainingMs > 0 ? `${mins}:${secs} متبقي` : `انتهى!`;
+                }
+            });
+            document.getElementById('sum-total').innerText = `${Math.round(liveTotal).toLocaleString()} IQD`;
+            document.getElementById('sum-final').innerText = `${Math.round(liveTotal - paidTotal).toLocaleString()} IQD`;
         }
 
+        window.toggleTimer = async (idx) => {
+            const table = allTables.find(t => t.id === currentTableId);
+            const item = table.items[idx];
+            if(item.isRunning) { item.isRunning = false; item.endTime = Date.now(); } 
+            else { item.startTime += (Date.now() - item.endTime); item.isRunning = true; delete item.endTime; }
+            await updateDoc(doc(db, "tables", currentTableId), { items: table.items });
+        };
+
         window.updateItemQty = async (idx, delta) => {
-            const tableRef = doc(db, "tables", currentTableId);
-            const snap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            const tableData = snap.docs[0].data();
-            const items = tableData.items;
-            const item = items[idx];
-            const priceChange = item.price * delta;
-            
-            if(item.qty + delta <= 0) { items.splice(idx, 1); } else { items[idx].qty = (items[idx].qty || 1) + delta; }
-            await updateDoc(tableRef, { items, currentTotal: tableData.currentTotal + priceChange });
-            const updatedSnap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            renderTableItems(updatedSnap.docs[0].data());
+            const table = allTables.find(t => t.id === currentTableId);
+            if(table.items[idx].qty + delta <= 0) {
+                if(confirm("حذف الطلب؟")) table.items.splice(idx, 1);
+            } else table.items[idx].qty += delta;
+            await updateDoc(doc(db, "tables", currentTableId), { items: table.items });
         };
 
         window.handlePartialPayment = async (idx) => {
-            const tableSnap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            const table = tableSnap.docs[0].data();
+            const table = allTables.find(t => t.id === currentTableId);
             const item = table.items[idx];
-            const currentQty = item.qty || 1;
-
-            const amount = prompt(`كم عدد ${item.name} المدفوع؟ (العدد المتوفر: ${currentQty})`);
+            const amount = prompt(`كم عدد ${item.name} المدفوع؟`);
             if(!amount || isNaN(amount)) return;
-            
             const paidQty = parseInt(amount);
-            if(paidQty > currentQty) return alert("لا يمكنك دفع أكثر من الكمية الموجودة!");
-
-            const paidValue = paidQty * item.price;
-            const items = table.items;
-            
-            if(paidQty === currentQty) {
-                items.splice(idx, 1);
-            } else {
-                items[idx].qty -= paidQty;
-            }
-
-            await updateDoc(doc(db, "tables", currentTableId), { 
-                items, 
-                currentTotal: table.currentTotal - paidValue 
-            });
-            const updatedSnap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            renderTableItems(updatedSnap.docs[0].data());
+            if(paidQty > item.qty) return alert("الكمية غير صحيحة!");
+            if(paidQty === item.qty) table.items.splice(idx, 1); else table.items[idx].qty -= paidQty;
+            await updateDoc(doc(db, "tables", currentTableId), { items: table.items });
         };
 
         window.openProductPicker = () => {
             const body = document.getElementById('modal-body');
             body.innerHTML = `
-                <h2 class="text-3xl font-black mb-8 text-center">إضافة منتج للطاولة</h2>
-                <div class="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto no-scrollbar">
+                <h2 class="text-3xl font-black mb-8 text-center">إضافة طلب</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto no-scrollbar">
                     ${allProducts.map(p => `
-                        <div onclick="addToTable('${p.id}')" class="flex justify-between items-center p-4 glass rounded-2xl cursor-pointer hover:bg-neonViolet transition-all">
-                            <span class="font-bold">${p.name}</span>
-                            <span class="font-orbitron">${p.price} IQD</span>
+                        <div onclick="addToTable('${p.id}')" class="flex flex-col p-4 glass rounded-2xl cursor-pointer hover:bg-neonViolet transition-all">
+                            <span class="font-bold text-lg">${p.name}</span>
+                            <div class="flex justify-between items-center text-sm text-gray-300 mt-2">
+                                <span>${p.type === 'normal' ? 'عادي' : p.type === 'open' ? 'ساعة مفتوحة' : 'وقت محدد'}</span>
+                                <span class="font-orbitron text-accentCyan">${p.price} IQD</span>
+                            </div>
                         </div>
                     `).join('')}
-                </div>
-            `;
+                </div>`;
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
 
         window.addToTable = async (prodId) => {
             const prod = allProducts.find(p => p.id === prodId);
-            const tableRef = doc(db, "tables", currentTableId);
-            const snap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            const tableData = snap.docs[0].data();
-            const items = tableData.items || [];
-            items.push({ name: prod.name, price: prod.price, qty: 1 });
-            await updateDoc(tableRef, { items, currentTotal: (tableData.currentTotal || 0) + prod.price });
+            const table = allTables.find(t => t.id === currentTableId);
+            const items = table.items || [];
+            
+            let newItem = { name: prod.name, type: prod.type };
+            if(prod.type === 'open') { newItem.pricePerHour = prod.price; newItem.startTime = Date.now(); newItem.isRunning = true; } 
+            else if (prod.type === 'fixed') { newItem.price = prod.price; newItem.duration = prod.duration; newItem.startTime = Date.now(); newItem.isRunning = true; } 
+            else {
+                newItem.price = prod.price; newItem.qty = 1;
+                const existingIdx = items.findIndex(i => i.name === newItem.name && i.type === 'normal');
+                if(existingIdx >= 0) { items[existingIdx].qty += 1; await updateDoc(doc(db, "tables", currentTableId), { items }); closeModal(); return; }
+            }
+            items.push(newItem);
+            await updateDoc(doc(db, "tables", currentTableId), { items });
             closeModal();
-            const updatedSnap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            renderTableItems(updatedSnap.docs[0].data());
         };
 
+        // --- CHECKOUT & PRINT ---
         window.confirmClose = async () => {
-            const tableSnap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            const table = tableSnap.docs[0].data();
-            const body = document.getElementById('modal-body');
-            body.innerHTML = `
-                <h2 class="text-3xl font-black mb-6 text-center">تأكيد الإغلاق</h2>
+            const table = allTables.find(t => t.id === currentTableId);
+            const total = Math.round(calculateTableTotal(table));
+            document.getElementById('modal-body').innerHTML = `
+                <h2 class="text-3xl font-black mb-6 text-center">تأكيد الإغلاق والدفع</h2>
                 <div class="p-6 glass rounded-3xl mb-8 text-center">
                     <p class="text-gray-400 mb-2">المبلغ النهائي المطلوب</p>
-                    <h3 class="text-5xl font-black text-accentCyan font-orbitron">${table.currentTotal} IQD</h3>
+                    <h3 class="text-5xl font-black text-accentCyan font-orbitron">${total.toLocaleString()} IQD</h3>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="executeClose()" class="p-4 rounded-2xl bg-neonViolet font-bold text-xl">تأكيد ✅</button>
+                    <button onclick="executeClose()" class="p-4 rounded-2xl bg-neonViolet font-bold text-xl">تأكيد وطباعة 🖨️</button>
                     <button onclick="closeModal()" class="p-4 rounded-2xl glass font-bold">إلغاء ✕</button>
-                </div>
-            `;
+                </div>`;
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
 
         window.executeClose = async () => {
-            const tableSnap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            const table = tableSnap.docs[0].data();
-            await addDoc(collection(db, "invoices"), {
-                tableName: table.name, total: table.currentTotal, items: table.items, timestamp: serverTimestamp()
-            });
-            await updateDoc(doc(db, "tables", currentTableId), { status: 'closed', currentTotal: 0, items: [] });
-            closeModal();
-            switchView('tables');
+            const table = allTables.find(t => t.id === currentTableId);
+            const total = Math.round(calculateTableTotal(table));
+            const invoiceRef = await addDoc(collection(db, "invoices"), { tableName: table.name, total: total, items: table.items, timestamp: serverTimestamp() });
+            await updateDoc(doc(db, "tables", currentTableId), { status: 'closed', items: [] });
+            printThermalReceipt(table, total, invoiceRef.id);
+            closeModal(); window.switchView('tables');
         };
 
-        window.openTransferModal = async () => {
-            const snap = await getDocs(query(collection(db, "tables"), where("status", "==", "open")));
-            const openTables = snap.docs.filter(d => d.id !== currentTableId);
-            const body = document.getElementById('modal-body');
-            body.innerHTML = `
-                <h2 class="text-3xl font-black mb-8 text-center">نقل الحساب إلى</h2>
-                <div class="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto no-scrollbar">
-                    ${openTables.map(t => `
-                        <div onclick="executeTransfer('${t.id}')" class="p-4 glass rounded-2xl cursor-pointer hover:bg-neonViolet transition-all text-center font-bold">
-                            ${t.data().name}
-                        </div>
-                    `).join('')}
-                </div>
-            `;
+        window.printThermalReceipt = (table, total, invoiceId) => {
+            const printWin = window.open('', '_blank');
+            let itemsHtml = '';
+            table.items.forEach(item => {
+                let desc = item.name;
+                let itemCost = Math.round(calculateItemCost(item));
+                if(item.type === 'normal') desc += ` (x${item.qty})`;
+                else if(item.type === 'open') desc += ` (مفتوح)`;
+                else if(item.type === 'fixed') desc += ` (${item.duration}د)`;
+                itemsHtml += `<tr><td style="padding: 5px 0; border-bottom: 1px dashed #000;">${desc}</td><td style="padding: 5px 0; border-bottom: 1px dashed #000; text-align: left;">${itemCost} IQD</td></tr>`;
+            });
+            const html = `<html dir="rtl"><head><title>Print</title><style>body { font-family: sans-serif; width: 80mm; margin: 0 auto; font-size: 14px; } h2, h3 { text-align: center; margin: 5px 0; } .line { border-top: 2px dashed #000; margin: 10px 0; } table { width: 100%; border-collapse: collapse; font-weight: bold;} .total { font-size: 18px; font-weight: bold; text-align: left; margin-top: 10px; }</style></head>
+            <body onload="window.print(); window.close();"><h2>RESPAWN LOUNGE</h2><h3>فاتورة</h3><div class="line"></div>
+            <p>رقم: ${invoiceId.substring(0,6)}</p><p>الطاولة: ${table.name}</p><p>التاريخ: ${new Date().toLocaleString('ar-IQ')}</p><div class="line"></div>
+            <table>${itemsHtml}</table><div class="total">المجموع: ${total} IQD</div><div class="line"></div><h3 style="margin-top: 20px;">شكراً لزيارتكم!</h3></body></html>`;
+            printWin.document.write(html); printWin.document.close();
+        };
+
+        // --- ADMIN CRUD FUNCTIONS ---
+        window.openAddTableModal = () => {
+            document.getElementById('modal-body').innerHTML = `
+                <h2 class="text-3xl font-black mb-8 text-center">إضافة طاولة</h2>
+                <input id="new-table-name" type="text" placeholder="الاسم" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-6 outline-none focus:border-neonViolet">
+                <button onclick="window.saveTable()" class="w-full p-4 rounded-2xl custom-gradient font-bold text-xl">حفظ ✅</button>`;
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
-
-        window.executeTransfer = async (toId) => {
-            const fromRef = doc(db, "tables", currentTableId);
-            const toRef = doc(db, "tables", toId);
-            const fromSnap = await getDocs(query(collection(db, "tables"), where("__name__", "==", currentTableId)));
-            const fromTable = fromSnap.docs[0].data();
-            const toSnap = await getDocs(query(collection(db, "tables"), where("__name__", "==", toId)));
-            const toTable = toSnap.docs[0].data();
-
-            await updateDoc(toRef, { 
-                items: [...(toTable.items || []), ...(fromTable.items || [])],
-                currentTotal: (toTable.currentTotal || 0) + (fromTable.currentTotal || 0)
-            });
-            await updateDoc(fromRef, { status: 'closed', currentTotal: 0, items: [] });
-            closeModal();
-            switchView('tables');
+        window.saveTable = async () => {
+            const name = document.getElementById('new-table-name').value;
+            if(!name) return;
+            await addDoc(collection(db, "tables"), { name, status: 'open', items: [] });
+            window.closeModal();
         };
-
         window.deleteTableConfirm = async () => {
-            if(confirm("هل أنت متأكد من مسح هذه الطاولة وكل بياناتها؟")) {
-                await deleteDoc(doc(db, "tables", currentTableId));
-                switchView('tables');
-            }
+            if(confirm("مسح الطاولة؟")) { await deleteDoc(doc(db, "tables", currentTableId)); window.switchView('tables'); }
+        };
+        window.openTransferModal = async () => {
+            const openTables = allTables.filter(d => d.id !== currentTableId);
+            document.getElementById('modal-body').innerHTML = `
+                <h2 class="text-3xl font-black mb-8 text-center">نقل إلى</h2>
+                <div class="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">${openTables.map(t => `<div onclick="executeTransfer('${t.id}')" class="p-4 glass rounded-2xl cursor-pointer hover:bg-neonViolet text-center font-bold">${t.name}</div>`).join('')}</div>`;
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        };
+        window.executeTransfer = async (toId) => {
+            const fromTable = allTables.find(t => t.id === currentTableId), toTable = allTables.find(t => t.id === toId);
+            await updateDoc(doc(db, "tables", toId), { items: [...(toTable.items || []), ...(fromTable.items || [])] });
+            await updateDoc(doc(db, "tables", currentTableId), { status: 'closed', items: [] });
+            closeModal(); window.switchView('tables');
         };
 
-        // --- Menu Management ---
         async function loadMenu() {
             const catSnap = await getDocs(collection(db, "categories"));
             const prodSnap = await getDocs(collection(db, "products"));
@@ -426,127 +480,58 @@
             container.innerHTML = '';
             allCategories.forEach(cat => {
                 const catProds = allProducts.filter(p => p.categoryId === cat.id);
-                container.innerHTML += `
-                    <div class="glass p-6 rounded-[2.5rem] border-t-4 border-neonViolet">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-black">${cat.name}</h3>
-                            <button onclick="openAddProductModal('${cat.id}')" class="text-xs bg-white/10 px-3 py-1 rounded-lg hover:bg-neonViolet transition-all">+ منتج</button>
-                        </div>
-                        <div class="space-y-3">
-                            ${catProds.map(p => `
-                                <div class="flex justify-between items-center p-3 bg-white/5 rounded-xl text-sm">
-                                    <span>${p.name}</span>
-                                    <div class="flex items-center gap-3">
-                                        <span class="font-orbitron text-accentCyan">${p.price} IQD</span>
-                                        <button onclick="deleteProduct('${p.id}')" class="text-red-500">✕</button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <button onclick="deleteCategory('${cat.id}')" class="w-full mt-6 p-2 text-xs text-red-500 hover:bg-red-500/10 rounded-xl transition-all">حذف القسم 🗑️</button>
-                    </div>
-                `;
+                container.innerHTML += `<div class="glass p-6 rounded-[2.5rem] border-t-4 border-neonViolet">
+                    <div class="flex justify-between items-center mb-6"><h3 class="text-xl font-black">${cat.name}</h3><button onclick="window.openAddProductModal('${cat.id}')" class="text-xs bg-white/10 px-3 py-1 rounded-lg">+ منتج</button></div>
+                    <div class="space-y-3">${catProds.map(p => `<div class="flex justify-between items-center p-3 bg-white/5 rounded-xl text-sm">
+                        <div><div class="font-bold">${p.name}</div><div class="text-[10px] text-gray-400">${p.type}</div></div>
+                        <div class="flex gap-3"><span class="text-accentCyan">${p.price}</span><button onclick="window.deleteProduct('${p.id}')" class="text-red-500">✕</button></div>
+                    </div>`).join('')}</div>
+                    <button onclick="window.deleteCategory('${cat.id}')" class="w-full mt-6 p-2 text-xs text-red-500 rounded-xl">حذف القسم 🗑️</button>
+                </div>`;
             });
         }
 
         window.openAddCategoryModal = () => {
-            const body = document.getElementById('modal-body');
-            body.innerHTML = `
-                <h2 class="text-3xl font-black mb-8 text-center">إضافة قسم</h2>
-                <input id="new-cat-name" type="text" placeholder="اسم القسم" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-6 outline-none focus:border-neonViolet transition-all">
-                <button onclick="saveCategory()" class="w-full p-4 rounded-2xl custom-gradient font-bold text-xl">حفظ ✅</button>
-            `;
+            document.getElementById('modal-body').innerHTML = `<h2 class="text-3xl font-black mb-8 text-center">إضافة قسم</h2><input id="new-cat-name" type="text" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-6"><button onclick="window.saveCategory()" class="w-full p-4 rounded-2xl custom-gradient font-bold text-xl">حفظ</button>`;
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
-
-        window.saveCategory = async () => {
-            const name = document.getElementById('new-cat-name').value;
-            if(!name) return alert("أدخل الاسم!");
-            await addDoc(collection(db, "categories"), { name });
-            await loadMenu();
-            closeModal();
-        };
-
+        window.saveCategory = async () => { await addDoc(collection(db, "categories"), { name: document.getElementById('new-cat-name').value }); loadMenu(); closeModal(); };
         window.openAddProductModal = (catId) => {
-            const body = document.getElementById('modal-body');
-            body.innerHTML = `
-                <h2 class="text-3xl font-black mb-8 text-center">إضافة منتج</h2>
-                <input id="prod-name" type="text" placeholder="اسم المنتج" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-4 outline-none focus:border-neonViolet transition-all">
-                <input id="prod-price" type="number" placeholder="السعر" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-6 outline-none focus:border-neonViolet transition-all">
-                <button onclick="saveProduct('${catId}')" class="w-full p-4 rounded-2xl custom-gradient font-bold text-xl">حفظ ✅</button>
-            `;
+            document.getElementById('modal-body').innerHTML = `<h2 class="text-3xl font-black mb-8 text-center">إضافة منتج</h2>
+                <input id="prod-name" type="text" placeholder="اسم المنتج" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-4">
+                <select id="prod-type" onchange="document.getElementById('prod-duration').classList.toggle('hidden', this.value !== 'fixed')" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-4 text-white"><option value="normal" class="text-black">عادي</option><option value="open" class="text-black">وقت مفتوح</option><option value="fixed" class="text-black">وقت محدد</option></select>
+                <input id="prod-duration" type="number" placeholder="المدة بالدقائق" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-4 hidden">
+                <input id="prod-price" type="number" placeholder="السعر" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-6">
+                <button onclick="window.saveProduct('${catId}')" class="w-full p-4 rounded-2xl custom-gradient font-bold text-xl">حفظ</button>`;
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
-
         window.saveProduct = async (catId) => {
-            const name = document.getElementById('prod-name').value;
-            const price = parseInt(document.getElementById('prod-price').value);
-            if(!name || !price) return alert("أكمل البيانات!");
-            await addDoc(collection(db, "products"), { name, price, categoryId: catId });
-            await loadMenu();
-            closeModal();
+            const name = document.getElementById('prod-name').value, price = parseInt(document.getElementById('prod-price').value), type = document.getElementById('prod-type').value, duration = parseInt(document.getElementById('prod-duration').value);
+            let productData = { name, price, type, categoryId: catId };
+            if(type === 'fixed') productData.duration = duration;
+            await addDoc(collection(db, "products"), productData); loadMenu(); closeModal();
         };
+        window.deleteProduct = async (id) => { if(confirm("حذف؟")) { await deleteDoc(doc(db, "products", id)); loadMenu(); } };
+        window.deleteCategory = async (id) => { if(confirm("حذف؟")) { await deleteDoc(doc(db, "categories", id)); loadMenu(); } };
 
-        window.deleteProduct = async (id) => {
-            if(confirm("حذف المنتج؟")) { await deleteDoc(doc(db, "products", id)); loadMenu(); }
-        };
-
-        window.deleteCategory = async (id) => {
-            if(confirm("حذف القسم؟")) {
-                await deleteDoc(doc(db, "categories", id));
-                const prods = await getDocs(collection(db, "products"));
-                prods.forEach(p => { if(p.data().categoryId === id) deleteDoc(doc(db, "products", p.id)); });
-                loadMenu();
-            }
-        };
-
-        window.openAddTableModal = () => {
-            const body = document.getElementById('modal-body');
-            body.innerHTML = `
-                <h2 class="text-3xl font-black mb-8 text-center">إضافة طاولة جديدة</h2>
-                <input id="new-table-name" type="text" placeholder="اسم الطاولة" class="w-full p-4 rounded-2xl bg-black/40 border border-white/10 mb-6 outline-none focus:border-neonViolet transition-all">
-                <button onclick="saveTable()" class="w-full p-4 rounded-2xl custom-gradient font-bold text-xl">حفظ ✅</button>
-            `;
-            document.getElementById('modal-overlay').classList.remove('hidden');
-        };
-
-        window.saveTable = async () => {
-            const name = document.getElementById('new-table-name').value;
-            if(!name) return alert("أدخل الاسم!");
-            await addDoc(collection(db, "tables"), { name, status: 'open', currentTotal: 0, items: [] });
-            closeModal();
-        };
-
-        window.closeModal = () => document.getElementById('modal-overlay').classList.add('hidden');
-
-        window.resetSystem = async () => {
-            if(confirm("⚠️ تحذير: سيتم تصفير جميع الطاولات والبيانات! هل أنت متأكد؟")) {
-                const snap = await getDocs(collection(db, "tables"));
-                const batch = writeBatch(db);
-                snap.forEach(d => batch.update(d.ref, { status: 'closed', currentTotal: 0, items: [] }));
-                await batch.commit();
-                alert("تم التصفير بنجاح ✅");
-            }
-        };
-
-        window.onload = async () => {
-            loadMenu();
-            onSnapshot(collection(db, "invoices"), (snap) => {
-                const list = document.getElementById('invoices-list');
-                list.innerHTML = '';
-                let total = 0;
-                snap.forEach(d => {
-                    const inv = d.data();
-                    total += inv.total;
-                    list.innerHTML += `<tr class="hover:bg-white/5 transition-all">
-                        <td class="p-6 font-orbitron">${d.id.substring(0,5)}</td>
-                        <td class="p-6 font-bold">${inv.tableName}</td>
-                        <td class="p-6 text-accentCyan font-black">${inv.total} IQD</td>
-                        <td class="p-6 text-xs text-gray-400">${inv.timestamp?.toDate().toLocaleString('ar-IQ')}</td>
-                    </tr>`;
-                });
-                document.getElementById('day-rev').innerText = `${total.toLocaleString()} IQD`;
+        onSnapshot(collection(db, "invoices"), (snap) => {
+            const list = document.getElementById('invoices-list');
+            if(list) list.innerHTML = '';
+            let total = 0;
+            snap.forEach(d => {
+                const inv = d.data(); total += inv.total;
+                if(list) list.innerHTML += `<tr class="hover:bg-white/5">
+                    <td class="p-6">${d.id.substring(0,5)}</td><td class="p-6 font-bold">${inv.tableName}</td><td class="p-6 text-accentCyan">${inv.total} IQD</td><td class="p-6 text-xs">${inv.timestamp ? inv.timestamp.toDate().toLocaleString('ar-IQ') : 'الآن'}</td></tr>`;
             });
+            document.getElementById('day-rev').innerText = `${total.toLocaleString()} IQD`;
+            document.getElementById('invoice-count').innerText = snap.size;
+        });
+
+        window.clearAllInvoices = async () => {
+            if(confirm("حذف كل الفواتير؟")) { const snap = await getDocs(collection(db, "invoices")); const batch = writeBatch(db); snap.forEach(d => batch.delete(d.ref)); await batch.commit(); }
+        };
+        window.resetSystem = async () => {
+            if(confirm("تصفير الطاولات؟")) { const snap = await getDocs(collection(db, "tables")); const batch = writeBatch(db); snap.forEach(d => batch.update(d.ref, { status: 'closed', items: [] })); await batch.commit(); }
         };
     </script>
 </body>
